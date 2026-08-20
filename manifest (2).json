@@ -1,0 +1,15 @@
+{
+  "name": "Novos Tempos - 46º EC",
+  "short_name": "Novos Tempos",
+  "description": "Orações, mensagens motivacionais e encontros do Círculo Azul.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef2ff",
+  "theme_color": "#312e81",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "borboleta.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "borboleta.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
