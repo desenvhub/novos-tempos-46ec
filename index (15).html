@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#312e81" />
+<title>Novos Tempos - 46º EC</title>
+<link rel="icon" type="image/png" href="borboleta.png" />
+
+<!-- PWA: permite instalar como app de verdade (tela cheia, ícone próprio) -->
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="borboleta.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Novos Tempos" />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<!-- Tailwind (via CDN, sem build) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Fonte -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- React (via CDN) -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<!-- Babel: permite escrever JSX direto no navegador, sem etapa de build -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- jsPDF: gera o PDF da ata direto no navegador -->
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+  body { font-family: 'Inter', ui-sans-serif, system-ui; }
+  .font-display { font-family: 'Fraunces', Georgia, serif; }
+</style>
+</head>
+<body class="bg-slate-50">
+<div id="root"></div>
+
+<!-- ===================================================================
+     CONFIGURAÇÃO DO FIREBASE
+     Projeto: novos-tempos-46ec
+     =================================================================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, deleteDoc, updateDoc, setDoc, doc,
+    onSnapshot, query, orderBy, arrayUnion, arrayRemove, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBrLgWg_uKqCoEydKNH8pLueT8y8UH9Js",
+    authDomain: "novos-tempos-46ec.firebaseapp.com",
+    projectId: "novos-tempos-46ec",
+    storageBucket: "novos-tempos-46ec.firebasestorage.app",
+    messagingSenderId: "685086916540",
+    appId: "1:685086916540:web:ab722c88107001350f35b9",
+    measurementId: "G-RW2WTP734E",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.__firebase = {
+    db, collection, addDoc, deleteDoc, updateDoc, setDoc, doc,
+    onSnapshot, query, orderBy, arrayUnion, arrayRemove, serverTimestamp,
+  };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+
+<!-- ===================================================================
+     APP REACT (JSX transformado no navegador pelo Babel)
+     =================================================================== -->
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useRef } = React;
+
+/* ---------------- Ícones (SVG simples, traço único) ---------------- */
+function Icon({ className = "w-5 h-5", children }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {children}
+    </svg>
+  );
+}
+const HomeIcon = (p) => <Icon {...p}><path d="M3 11.5 12 4l9 7.5" /><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" /></Icon>;
+const CalendarIcon = (p) => <Icon {...p}><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M8 3v4M16 3v4M3.5 10h17" /></Icon>;
+const PrayIcon = (p) => <Icon {...p}><path d="M12 21c-4-2.5-7-6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4-3 7.5-7 10Z" /></Icon>;
+const SparkIcon = (p) => <Icon {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></Icon>;
+const PinIcon = (p) => <Icon {...p}><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.3" /></Icon>;
+const MenuIcon = (p) => <Icon {...p}><path d="M4 6h16M4 12h16M4 18h16" /></Icon>;
+const CloseIcon = (p) => <Icon {...p}><path d="M6 6l12 12M18 6 6 18" /></Icon>;
+const LinkIcon = (p) => <Icon {...p}><path d="M9 15 15 9M10 6l1-1a4 4 0 0 1 5.7 5.7l-1.2 1.2M14 18l-1 1A4 4 0 0 1 7.3 13.3l1.2-1.2" /></Icon>;
+const CameraIcon = (p) => <Icon {...p}><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" /><circle cx="12" cy="13" r="3.5" /></Icon>;
+const ClockIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Icon>;
+const AddressIcon = (p) => <Icon {...p}><path d="M12 2 15.5 9.5 12 22 8.5 9.5Z" /><circle cx="12" cy="9.5" r="2" /></Icon>;
+const GiftIcon = (p) => <Icon {...p}><rect x="4" y="10" width="16" height="10" rx="1.5" /><path d="M4 10h16v3.5H4z" opacity="0" /><path d="M12 10v10M4 10h16M7.5 10C6 10 5 8.8 5 7.5 5 6.2 6 5 7.3 5 9.5 5 12 10 12 10 12 10 14.5 5 16.7 5 18 5 19 6.2 19 7.5 19 8.8 18 10 16.5 10" /></Icon>;
+const SearchIcon = (p) => <Icon {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></Icon>;
+const DownloadIcon = (p) => <Icon {...p}><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" /></Icon>;
+const CheckIcon = (p) => <Icon {...p}><path d="M5 13l4 4L19 7" /></Icon>;
+const ChatIcon = (p) => <Icon {...p}><path d="M21 12a8 8 0 1 1-3.6-6.7L21 4l-1 3.9A8 8 0 0 1 21 12Z" /></Icon>;
+const HeartFillIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.6-9.5-9C.7 8.4 2 5 5.5 5c2 0 3.3 1 4.5 2.5C11.2 6 12.5 5 14.5 5 18 5 19.3 8.4 21.5 12 19 16.4 12 21 12 21Z" /></svg>
+);
+
+function Butterfly({ className = "", size = 40 }) {
+  return (
+    <img src="borboleta.png" alt="Borboleta azul" className={className}
+      style={{ width: size, height: size, objectFit: "contain" }} />
+  );
+}
+
+/* ---------------- Perfis / Avatares ---------------- */
+function slugify(name) {
+  return (name || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+const AVATAR_COLORS = ["bg-indigo-500", "bg-amber-500", "bg-sky-500", "bg-violet-500", "bg-rose-500", "bg-emerald-500"];
+function colorFor(name) {
+  let h = 0;
+  for (let i = 0; i < (name || "").length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+function initials(name) {
+  const parts = (name || "?").trim().split(/\s+/);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "?";
+}
+const ADMIN_SLUGS = ["janaina"];
+function isAdminName(name) {
+  const s = slugify(name);
+  return ADMIN_SLUGS.some((a) => s.startsWith(a));
+}
+function Avatar({ name, profiles, size = 36, badge }) {
+  const photoURL = profiles[slugify(name)]?.photoURL;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      {photoURL ? (
+        <img src={photoURL} alt={name} className="w-full h-full rounded-full object-cover border border-white shadow-sm" style={{ width: size, height: size }} />
+      ) : (
+        <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-medium shadow-sm ${colorFor(name)}`}
+          style={{ width: size, height: size, fontSize: size * 0.38 }}>
+          {initials(name)}
+        </div>
+      )}
+      {badge && (
+        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow flex items-center justify-center">
+          {badge}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function resizeImageToDataURL(file, size = 200, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function ProfileModal({ name, profiles, onClose, onSave }) {
+  const fb = window.__firebase;
+  const fileRef = useRef(null);
+  const [nameDraft, setNameDraft] = useState(name);
+  const [preview, setPreview] = useState(profiles[slugify(name)]?.photoURL || null);
+  const [birthday, setBirthday] = useState(profiles[slugify(name)]?.birthday || "");
+  const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [err, setErr] = useState("");
+
+  const pickFile = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { setErr("Escolha um arquivo de imagem."); return; }
+    if (f.size > 8 * 1024 * 1024) { setErr("A imagem precisa ter até 8MB."); return; }
+    setErr("");
+    setProcessing(true);
+    try {
+      const dataUrl = await resizeImageToDataURL(f, 200, 0.75);
+      setPreview(dataUrl);
+    } catch (e) {
+      setErr("Não foi possível processar essa imagem.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const save = async () => {
+    const finalName = nameDraft.trim();
+    if (!finalName) { setErr("Digite um nome."); return; }
+    setSaving(true);
+    setErr("");
+    try {
+      await fb.setDoc(fb.doc(fb.db, "profiles", slugify(finalName)), {
+        name: finalName, photoURL: preview || null, birthday: birthday || null,
+        updatedAt: fb.serverTimestamp(),
+      }, { merge: true });
+      onSave(finalName);
+    } catch (e) {
+      setErr("Não foi possível salvar. Verifique a conexão e tente de novo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 max-h-[90vh] overflow-y-auto">
+        <p className="font-display text-lg text-indigo-950 mb-4">Seu perfil</p>
+
+        <div className="flex flex-col items-center gap-3 mb-4">
+          <button onClick={() => fileRef.current?.click()} className="relative group">
+            {preview ? (
+              <img src={preview} alt="" className="w-24 h-24 rounded-full object-cover border-2 border-indigo-100" />
+            ) : (
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-medium ${colorFor(nameDraft)}`}>
+                {initials(nameDraft)}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+              <CameraIcon className="w-6 h-6 text-white" />
+            </div>
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickFile} />
+          <button onClick={() => fileRef.current?.click()} className="text-sm text-indigo-700 font-medium hover:underline">
+            {processing ? "Processando…" : preview ? "Trocar foto" : "Adicionar foto"}
+          </button>
+        </div>
+
+        <label className="block text-xs font-semibold text-slate-500 mb-1">Nome</label>
+        <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)}
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-3" />
+
+        <label className="block text-xs font-semibold text-slate-500 mb-1">Aniversário (opcional)</label>
+        <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-1" />
+        <p className="text-[11px] text-slate-400 mb-1">Usamos só o dia e o mês — o ano não aparece pra ninguém.</p>
+
+        {err && <p className="text-xs text-red-500 mt-1">{err}</p>}
+
+        <div className="flex gap-2 mt-5">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-slate-200 text-slate-600 py-2 text-sm font-medium hover:bg-slate-50 transition">Cancelar</button>
+          <button onClick={save} disabled={saving || processing} className="flex-1 rounded-xl bg-indigo-700 text-white py-2 text-sm font-medium hover:bg-indigo-800 transition disabled:opacity-60">
+            {saving ? "Salvando…" : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WhoAreYou({ profiles, onPick, onNew }) {
+  const list = Object.values(profiles).sort((a, b) => a.name.localeCompare(b.name));
+  const [showNew, setShowNew] = useState(list.length === 0);
+  const [draft, setDraft] = useState("");
+
+  if (showNew || list.length === 0) {
+    return (
+      <div className="bg-white border border-indigo-100 rounded-2xl p-5 shadow-sm">
+        <p className="font-medium text-indigo-900 mb-2">Como podemos te chamar?</p>
+        <div className="flex gap-2">
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && draft.trim() && onNew(draft.trim())}
+            placeholder="Seu nome ou nome do casal"
+            className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          <button onClick={() => draft.trim() && onNew(draft.trim())} className="rounded-xl bg-indigo-700 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-800 transition">Salvar</button>
+        </div>
+        {list.length > 0 && (
+          <button onClick={() => setShowNew(false)} className="text-xs text-indigo-500 hover:underline mt-2">
+            já apareço na lista, quero me identificar →
+          </button>
+        )}
+        <p className="text-xs text-slate-400 mt-2">Depois você também pode adicionar uma foto no seu perfil.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-indigo-100 rounded-2xl p-5 shadow-sm">
+      <p className="font-medium text-indigo-900 mb-1">Quem é você?</p>
+      <p className="text-xs text-slate-400 mb-3">Toque na sua foto para entrar neste aparelho.</p>
+      <div className="flex flex-wrap gap-3">
+        {list.map((p) => (
+          <button key={p.name} onClick={() => onPick(p.name)} className="flex flex-col items-center gap-1 w-16">
+            <Avatar name={p.name} profiles={profiles} size={48} />
+            <span className="text-xs text-slate-600 truncate w-full text-center">{p.name}</span>
+          </button>
+        ))}
+      </div>
+      <button onClick={() => setShowNew(true)} className="text-xs text-indigo-500 hover:underline mt-3">
+        não estou na lista, sou novo(a) aqui →
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- Reações + Comentários (reutilizável) ---------------- */
+const REACTIONS = ["❤️", "🙏", "🕊️", "🤍", "🫶", "✨", "🦋", "🌿", "🌱", "🕯️", "📖", "⛪", "🛐", "👏", "🎉", "😢", "😂", "👍"];
+
+function ReactionsAndComments({ collectionName, item, currentName, profiles }) {
+  const fb = window.__firebase;
+  const [showComments, setShowComments] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [namesFor, setNamesFor] = useState(null);
+  const [customEmoji, setCustomEmoji] = useState("");
+  const [commentDraft, setCommentDraft] = useState("");
+  const reactions = item.reactions || {};
+  const comments = item.comments || [];
+  const activeEmojis = Object.keys(reactions).filter((e) => (reactions[e] || []).length > 0);
+
+  const toggleReaction = async (emoji) => {
+    if (!currentName || !emoji) return;
+    setShowPicker(false);
+    setCustomEmoji("");
+    const next = { ...reactions };
+    const list = new Set(next[emoji] || []);
+    if (list.has(currentName)) list.delete(currentName); else list.add(currentName);
+    next[emoji] = Array.from(list);
+    try {
+      await fb.updateDoc(fb.doc(fb.db, collectionName, item.id), { reactions: next });
+    } catch (e) { /* silencioso, não é crítico */ }
+  };
+
+  const submitComment = async () => {
+    if (!commentDraft.trim()) return;
+    try {
+      await fb.updateDoc(fb.doc(fb.db, collectionName, item.id), {
+        comments: fb.arrayUnion({ author: currentName || "Anônimo", text: commentDraft.trim(), ts: Date.now() }),
+      });
+      setCommentDraft("");
+    } catch (e) { /* silencioso */ }
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {activeEmojis.map((emoji) => {
+          const names = reactions[emoji] || [];
+          const active = currentName && names.includes(currentName);
+          return (
+            <button key={emoji} onClick={() => setNamesFor(namesFor === emoji ? null : emoji)}
+              className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs border transition ${
+                active ? "bg-indigo-50 border-indigo-300 text-indigo-700" : "bg-white border-slate-200 text-slate-500"
+              }`}>
+              <span>{emoji}</span>
+              <span>{names.length}</span>
+            </button>
+          );
+        })}
+
+        <div className="relative">
+          <button onClick={() => setShowPicker(!showPicker)}
+            className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs border border-dashed border-slate-300 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition">
+            Reagir
+          </button>
+          {showPicker && (
+            <div className="absolute z-10 top-full mt-1 left-0 bg-white border border-slate-200 rounded-xl shadow-lg p-2 w-60">
+              <div className="grid grid-cols-6 gap-1">
+                {REACTIONS.map((emoji) => {
+                  const active = currentName && (reactions[emoji] || []).includes(currentName);
+                  return (
+                    <button key={emoji} onClick={() => toggleReaction(emoji)}
+                      className={`text-lg rounded-lg py-1 hover:bg-indigo-50 transition ${active ? "bg-indigo-50" : ""}`}>
+                      {emoji}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-1 mt-2 pt-2 border-t border-slate-100">
+                <input value={customEmoji} onChange={(e) => setCustomEmoji(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && toggleReaction(customEmoji.trim())}
+                  placeholder="outro emoji…" maxLength={4}
+                  className="flex-1 min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                <button onClick={() => toggleReaction(customEmoji.trim())} className="text-xs text-indigo-700 font-medium px-1.5 shrink-0">usar</button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Toque no campo e use o teclado de emojis do seu celular 😊</p>
+            </div>
+          )}
+        </div>
+
+        <button onClick={() => setShowComments(!showComments)}
+          className="flex items-center gap-1 rounded-full px-2 py-1 text-xs border border-slate-200 text-slate-500 hover:border-indigo-200 transition">
+          <ChatIcon className="w-3.5 h-3.5" />
+          {comments.length > 0 ? comments.length : "comentar"}
+        </button>
+      </div>
+
+      {namesFor && (
+        <p className="text-xs text-slate-500 mt-1.5">
+          {namesFor} reagido por: {(reactions[namesFor] || []).join(", ")}
+        </p>
+      )}
+
+      {showComments && (
+        <div className="mt-2 space-y-2 pl-1">
+          {comments.map((c, i) => (
+            <div key={i} className="flex gap-2">
+              <Avatar name={c.author} profiles={profiles} size={22} />
+              <div className="min-w-0">
+                <p className="text-xs"><span className="font-medium text-indigo-800">{c.author}</span></p>
+                <p className="text-sm text-slate-600">{c.text}</p>
+              </div>
+            </div>
+          ))}
+          <div className="flex gap-2 pt-1">
+            <input value={commentDraft} onChange={(e) => setCommentDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitComment()}
+              placeholder="Escrever um comentário (opcional)…"
+              className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <button onClick={submitComment} className="text-xs text-indigo-700 font-medium px-2">Enviar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const NAV = [
+  { id: "inicio", label: "Início", Icon: HomeIcon },
+  { id: "reunioes", label: "Reuniões", Icon: CalendarIcon },
+  { id: "oracoes", label: "Orações e links", Icon: PrayIcon },
+  { id: "motivacional", label: "Motivacional", Icon: SparkIcon },
+  { id: "aniversarios", label: "Aniversariantes", Icon: GiftIcon },
+];
+
+const MONTHS_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+function formatDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+}
+function formatWhen(ts) {
+  if (!ts) return "agora há pouco";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + " · " +
+    d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+function birthdayParts(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + "T00:00:00");
+  return { month: d.getMonth(), day: d.getDate() };
+}
+
+function exportAtaPdf(meeting) {
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF();
+  let y = 20;
+  docPdf.setFontSize(16);
+  docPdf.text(meeting.title, 14, y); y += 10;
+  docPdf.setFontSize(11);
+  docPdf.text(`Data: ${formatDate(meeting.date)}${meeting.time ? " às " + meeting.time : ""}`, 14, y); y += 7;
+  if (meeting.location) { docPdf.text(`Local: ${meeting.location}`, 14, y); y += 7; }
+  if (meeting.address) { docPdf.text(`Endereço: ${meeting.address}`, 14, y); y += 7; }
+  y += 3;
+  docPdf.setFontSize(12);
+  docPdf.text("Presentes:", 14, y); y += 7;
+  docPdf.setFontSize(11);
+  if (meeting.participants.length) {
+    meeting.participants.forEach((p) => { docPdf.text(`- ${p}`, 18, y); y += 6; });
+  } else {
+    docPdf.text("Nenhum registrado.", 18, y); y += 6;
+  }
+  y += 4;
+  docPdf.setFontSize(12);
+  docPdf.text("Resumo:", 14, y); y += 7;
+  docPdf.setFontSize(11);
+  const lines = docPdf.splitTextToSize(meeting.summary || "Sem resumo registrado.", 180);
+  docPdf.text(lines, 14, y);
+  docPdf.save(`ata-${slugify(meeting.title)}-${meeting.date}.pdf`);
+}
+
+function App() {
+  const [ready, setReady] = useState(!!window.__firebase);
+  const [tab, setTab] = useState("inicio");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const [name, setName] = useState(() => localStorage.getItem("nt-name") || "");
+  const [showNamePrompt, setShowNamePrompt] = useState(!localStorage.getItem("nt-name"));
+
+  const [prayers, setPrayers] = useState([]);
+  const [words, setWords] = useState([]);
+  const [meetings, setMeetings] = useState([]);
+  const [profiles, setProfiles] = useState({});
+
+  useEffect(() => {
+    if (window.__firebase) { setReady(true); return; }
+    const handler = () => setReady(true);
+    window.addEventListener("firebase-ready", handler);
+    return () => window.removeEventListener("firebase-ready", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const fb = window.__firebase;
+    const unsubs = [];
+    try {
+      unsubs.push(fb.onSnapshot(
+        fb.query(fb.collection(fb.db, "prayers"), fb.orderBy("createdAt", "desc")),
+        (snap) => setPrayers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => setErrorMsg("Não foi possível conectar ao Firebase.")
+      ));
+      unsubs.push(fb.onSnapshot(
+        fb.query(fb.collection(fb.db, "words"), fb.orderBy("createdAt", "desc")),
+        (snap) => setWords(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ));
+      unsubs.push(fb.onSnapshot(
+        fb.collection(fb.db, "meetings"),
+        (snap) => setMeetings(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ));
+      unsubs.push(fb.onSnapshot(
+        fb.collection(fb.db, "profiles"),
+        (snap) => {
+          const map = {};
+          snap.docs.forEach((d) => { map[d.id] = d.data(); });
+          setProfiles(map);
+        }
+      ));
+    } catch (e) {
+      setErrorMsg("Não foi possível conectar ao Firebase.");
+    }
+    return () => unsubs.forEach((u) => u && u());
+  }, [ready]);
+
+  const goTab = (id) => { setTab(id); setSidebarOpen(false); };
+
+  const addPrayer = async (text, link) => {
+    if (!text.trim()) return;
+    const fb = window.__firebase;
+    try {
+      await fb.addDoc(fb.collection(fb.db, "prayers"), {
+        author: name || "Anônimo", text: text.trim(), link: link.trim(), createdAt: fb.serverTimestamp(),
+        reactions: {}, comments: [],
+      });
+    } catch (e) { setErrorMsg("Não foi possível salvar a oração agora."); }
+  };
+  const removePrayer = async (id) => {
+    const fb = window.__firebase;
+    try { await fb.deleteDoc(fb.doc(fb.db, "prayers", id)); }
+    catch (e) { setErrorMsg("Não foi possível remover agora."); }
+  };
+  const updatePrayer = async (id, patch) => {
+    const fb = window.__firebase;
+    try { await fb.updateDoc(fb.doc(fb.db, "prayers", id), patch); }
+    catch (e) { setErrorMsg("Não foi possível salvar agora."); }
+  };
+
+  const addWord = async (word, message) => {
+    if (!word.trim()) return;
+    const fb = window.__firebase;
+    try {
+      await fb.addDoc(fb.collection(fb.db, "words"), {
+        author: name || "Anônimo", word: word.trim(), message: message.trim(), createdAt: fb.serverTimestamp(),
+        reactions: {}, comments: [],
+      });
+    } catch (e) { setErrorMsg("Não foi possível salvar agora."); }
+  };
+  const removeWord = async (id) => {
+    const fb = window.__firebase;
+    try { await fb.deleteDoc(fb.doc(fb.db, "words", id)); }
+    catch (e) { setErrorMsg("Não foi possível remover agora."); }
+  };
+  const updateWord = async (id, patch) => {
+    const fb = window.__firebase;
+    try { await fb.updateDoc(fb.doc(fb.db, "words", id), patch); }
+    catch (e) { setErrorMsg("Não foi possível salvar agora."); }
+  };
+
+  const addMeeting = async (title, date, time, location, address) => {
+    if (!date) return;
+    const fb = window.__firebase;
+    try {
+      await fb.addDoc(fb.collection(fb.db, "meetings"), {
+        title: title.trim() || "Encontro do círculo", date, time: time.trim(),
+        location: location.trim(), address: address.trim(),
+        summary: "", participants: [], status: "pendente",
+      });
+    } catch (e) { setErrorMsg("Não foi possível marcar o encontro agora."); }
+  };
+  const updateMeeting = async (id, patch) => {
+    const fb = window.__firebase;
+    try { await fb.updateDoc(fb.doc(fb.db, "meetings", id), patch); }
+    catch (e) { setErrorMsg("Não foi possível salvar agora."); }
+  };
+  const removeMeeting = async (id) => {
+    const fb = window.__firebase;
+    try { await fb.deleteDoc(fb.doc(fb.db, "meetings", id)); }
+    catch (e) { setErrorMsg("Não foi possível remover agora."); }
+  };
+  const toggleAttendance = async (meeting) => {
+    if (!name) { setShowNamePrompt(true); return; }
+    const fb = window.__firebase;
+    const present = meeting.participants.includes(name);
+    try {
+      await fb.updateDoc(fb.doc(fb.db, "meetings", meeting.id), {
+        participants: present ? fb.arrayRemove(name) : fb.arrayUnion(name),
+      });
+    } catch (e) { setErrorMsg("Não foi possível salvar sua presença agora."); }
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const pendentes = meetings.filter((m) => (m.status || "pendente") === "pendente");
+  const nextMeeting = pendentes.slice().sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  const currentMonth = new Date().getMonth();
+  const birthdaysThisMonth = Object.values(profiles)
+    .filter((p) => p.birthday && birthdayParts(p.birthday)?.month === currentMonth)
+    .sort((a, b) => birthdayParts(a.birthday).day - birthdayParts(b.birthday).day);
+
+  const activity = [
+    ...prayers.map((p) => ({ ...p, _type: "oracao" })),
+    ...words.map((w) => ({ ...w, _type: "motivacional" })),
+  ].sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return tb - ta;
+  }).slice(0, 6);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-indigo-700">
+          <Butterfly size={48} className="animate-pulse" />
+          <p className="text-sm">Carregando o círculo…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 px-5 pt-6 pb-8">
+        <Butterfly size={40} />
+        <div>
+          <p className="font-display text-xl font-semibold text-white">Novos Tempos</p>
+          <p className="text-indigo-300 text-xs">46° EC · Círculo Azul</p>
+        </div>
+      </div>
+      <nav className="flex-1 px-3 space-y-1">
+        {NAV.map(({ id, label, Icon: I }) => (
+          <button key={id} onClick={() => goTab(id)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              tab === id ? "bg-white text-indigo-900" : "text-indigo-100 hover:bg-indigo-800/60"
+            }`}>
+            <I className="w-5 h-5 shrink-0" />
+            {label}
+          </button>
+        ))}
+      </nav>
+      <button onClick={() => setProfileOpen(true)}
+        className="flex items-center gap-3 px-5 py-4 border-t border-indigo-800/60 hover:bg-indigo-800/40 transition text-left">
+        <Avatar name={name || "?"} profiles={profiles} size={36} />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-indigo-300">Conectado(a) como</p>
+          <p className="text-sm text-white font-medium truncate">
+            {name || "não identificado"}
+            {isAdminName(name) && <span className="ml-1.5 text-[10px] bg-amber-400 text-indigo-950 rounded-full px-1.5 py-0.5 align-middle">admin</span>}
+          </p>
+        </div>
+        <CameraIcon className="w-4 h-4 text-indigo-300 shrink-0" />
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen flex bg-slate-50 text-slate-800">
+      <aside className="hidden md:flex md:flex-col w-64 shrink-0 bg-gradient-to-b from-indigo-950 to-indigo-900">
+        {sidebarContent}
+      </aside>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-indigo-950 to-indigo-900 shadow-xl">
+            <button onClick={() => setSidebarOpen(false)} className="absolute right-3 top-4 text-indigo-200">
+              <CloseIcon className="w-6 h-6" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      {profileOpen && (
+        <ProfileModal
+          name={name}
+          profiles={profiles}
+          onClose={() => setProfileOpen(false)}
+          onSave={(finalName) => {
+            setName(finalName);
+            localStorage.setItem("nt-name", finalName);
+            setProfileOpen(false);
+          }}
+        />
+      )}
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-center gap-3 px-4 py-3 bg-indigo-950 text-white sticky top-0 z-30">
+          <button onClick={() => setSidebarOpen(true)} className="md:hidden"><MenuIcon className="w-6 h-6" /></button>
+          <Butterfly size={26} className="md:hidden" />
+          <div className="md:hidden">
+            <p className="font-display text-lg leading-tight">Novos Tempos</p>
+            <p className="text-indigo-300 text-[11px] leading-tight">46º EC · Círculo Azul</p>
+          </div>
+          <div className="flex-1" />
+          {name && (
+            <button onClick={() => setProfileOpen(true)} className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full hover:bg-indigo-800/60 transition">
+              <Avatar name={name} profiles={profiles} size={28} />
+              <span className="text-sm font-medium hidden sm:inline">{name}</span>
+            </button>
+          )}
+        </div>
+
+        {showNamePrompt && (
+          <div className="max-w-3xl w-full mx-auto px-6 pt-6">
+            <WhoAreYou
+              profiles={profiles}
+              onPick={(pickedName) => {
+                setName(pickedName);
+                localStorage.setItem("nt-name", pickedName);
+                setShowNamePrompt(false);
+              }}
+              onNew={(newName) => {
+                setName(newName);
+                localStorage.setItem("nt-name", newName);
+                setShowNamePrompt(false);
+              }}
+            />
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="max-w-3xl w-full mx-auto px-6 pt-4">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-2 text-sm">{errorMsg}</div>
+          </div>
+        )}
+
+        <main className="flex-1 max-w-3xl w-full mx-auto px-6 py-8">
+          {tab === "inicio" && (
+            <InicioView name={name} nextMeeting={nextMeeting} activity={activity} onGo={goTab} profiles={profiles} birthdays={birthdaysThisMonth} />
+          )}
+          {tab === "oracoes" && <OracoesView prayers={prayers} onAdd={addPrayer} onUpdate={updatePrayer} onRemove={removePrayer} currentName={name} profiles={profiles} />}
+          {tab === "motivacional" && <MotivacionalView words={words} onAdd={addWord} onUpdate={updateWord} onRemove={removeWord} currentName={name} profiles={profiles} />}
+          {tab === "reunioes" && (
+            <ReunioesView meetings={meetings} onAdd={addMeeting} onUpdate={updateMeeting} onRemove={removeMeeting}
+              onToggleAttendance={toggleAttendance} currentName={name} profiles={profiles} />
+          )}
+          {tab === "aniversarios" && <AniversariosView profiles={profiles} currentMonth={currentMonth} currentName={name} />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Início ---------------- */
+function InicioView({ name, nextMeeting, activity, onGo, profiles, birthdays }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="font-display text-2xl text-indigo-950">{name ? `Olá, ${name}` : "Bem-vindo(a)"}</p>
+        <p className="text-sm text-slate-500 mt-1">Aqui está o que está acontecendo no círculo.</p>
+      </div>
+
+      <div className="bg-gradient-to-br from-sky-50 via-indigo-50 to-sky-100 rounded-2xl border border-sky-100 px-5 py-4">
+        <p className="text-sm text-indigo-900 font-medium leading-relaxed">
+          Novos tempos, novas formas, o mesmo propósito. 🦋💙
+        </p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <CalendarIcon className="w-4 h-4 text-indigo-500" />
+          <p className="font-display text-lg text-indigo-900">Próximo encontro</p>
+        </div>
+        {nextMeeting ? (
+          <div>
+            <p className="text-slate-700 font-medium">{nextMeeting.title}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                <CalendarIcon className="w-4 h-4 text-indigo-500" />
+                <span>{formatDate(nextMeeting.date)}</span>
+              </div>
+              {nextMeeting.time && (
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                  <ClockIcon className="w-4 h-4 text-indigo-500" />
+                  <span>{nextMeeting.time}</span>
+                </div>
+              )}
+            </div>
+            {nextMeeting.location && (
+              <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1">
+                <PinIcon className="w-4 h-4 text-amber-500" />
+                <span>{nextMeeting.location}</span>
+              </div>
+            )}
+            {nextMeeting.address && (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nextMeeting.address)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-sm text-amber-600 hover:underline mt-1">
+                <AddressIcon className="w-4 h-4" />
+                <span>{nextMeeting.address} · abrir no mapa</span>
+              </a>
+            )}
+            <button onClick={() => onGo("reunioes")} className="mt-3 text-sm text-indigo-700 font-medium hover:underline">Ver detalhes e confirmar presença →</button>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-slate-500">Nenhum encontro pendente.</p>
+            <button onClick={() => onGo("reunioes")} className="mt-3 text-sm text-indigo-700 font-medium hover:underline">Marcar um encontro →</button>
+          </div>
+        )}
+      </div>
+
+      {birthdays.length > 0 && (
+        <div className="bg-gradient-to-br from-amber-50 to-rose-50 rounded-2xl border border-amber-100 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <GiftIcon className="w-4 h-4 text-amber-600" />
+            <p className="font-display text-lg text-amber-900">Aniversariantes do mês</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {birthdays.map((p) => (
+              <div key={p.name} className="flex items-center gap-2 bg-white/70 rounded-full pl-1 pr-3 py-1">
+                <Avatar name={p.name} profiles={profiles} size={28} />
+                <span className="text-sm text-slate-700">{p.name} · dia {birthdayParts(p.birthday).day}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-sm font-semibold text-slate-500 mb-3">Atividade recente</p>
+        {activity.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <p className="text-sm text-slate-400 text-center">
+              Em breve, as orações e mensagens do círculo vão aparecer aqui.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {activity.map((a) => (
+              <button key={a._type + a.id} onClick={() => onGo(a._type === "oracao" ? "oracoes" : "motivacional")}
+                className="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 hover:border-indigo-300 transition flex gap-3">
+                <Avatar name={a.author} profiles={profiles} size={36}
+                  badge={a._type === "oracao"
+                    ? <PrayIcon className="w-3 h-3 text-indigo-600" />
+                    : <SparkIcon className="w-3 h-3 text-amber-600" />} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm">
+                    <span className="font-medium text-indigo-900">{a.author}</span>
+                    <span className="text-slate-500"> {a._type === "oracao" ? "compartilhou uma oração" : "compartilhou algo motivacional"}</span>
+                  </p>
+                  <p className="text-sm text-slate-600 truncate mt-0.5">{a._type === "oracao" ? a.text : a.word}</p>
+                  <p className="text-xs text-slate-400 mt-1">{formatWhen(a.createdAt)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Aniversariantes ---------------- */
+function AniversariosView({ profiles, currentMonth, currentName }) {
+  const fb = window.__firebase;
+  const myBirthday = currentName ? profiles[slugify(currentName)]?.birthday : null;
+  const [draft, setDraft] = useState(myBirthday || "");
+  const [saving, setSaving] = useState(false);
+
+  const saveBirthday = async () => {
+    if (!currentName || !draft) return;
+    setSaving(true);
+    try {
+      await fb.setDoc(fb.doc(fb.db, "profiles", slugify(currentName)), {
+        name: currentName, birthday: draft, updatedAt: fb.serverTimestamp(),
+      }, { merge: true });
+    } catch (e) { /* silencioso */ }
+    setSaving(false);
+  };
+
+  const list = Object.values(profiles)
+    .filter((p) => p.birthday)
+    .map((p) => ({ ...p, _parts: birthdayParts(p.birthday) }))
+    .sort((a, b) => a._parts.month - b._parts.month || a._parts.day - b._parts.day);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <GiftIcon className="w-5 h-5 text-amber-600" />
+        <p className="font-display text-xl text-indigo-950">Aniversariantes</p>
+      </div>
+
+      {currentName && !myBirthday && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+          <p className="text-sm font-medium text-indigo-900 mb-2">Você ainda não cadastrou seu aniversário</p>
+          <div className="flex gap-2">
+            <input type="date" value={draft} onChange={(e) => setDraft(e.target.value)}
+              className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <button onClick={saveBirthday} disabled={saving || !draft}
+              className="rounded-xl bg-indigo-700 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-800 transition disabled:opacity-60">
+              {saving ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1.5">Usamos só o dia e o mês — o ano não aparece pra ninguém.</p>
+        </div>
+      )}
+
+      {list.length === 0 ? (
+        <p className="text-sm text-slate-400 text-center py-8">Ninguém cadastrou aniversário ainda.</p>
+      ) : (
+        <div className="space-y-2">
+          {list.map((p) => (
+            <div key={p.name} className={`flex items-center gap-3 rounded-2xl border p-3 ${
+              p._parts.month === currentMonth ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"
+            }`}>
+              <Avatar name={p.name} profiles={profiles} size={36} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-indigo-900">{p.name}</p>
+                <p className="text-xs text-slate-500">{p._parts.day} de {MONTHS_PT[p._parts.month]}</p>
+              </div>
+              {p._parts.month === currentMonth && <span className="text-xs text-amber-600 font-medium">este mês 🎉</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Orações ---------------- */
+function OracoesView({ prayers, onAdd, onUpdate, onRemove, currentName, profiles }) {
+  const [text, setText] = useState("");
+  const [link, setLink] = useState("");
+  const submit = async () => { if (!text.trim()) return; await onAdd(text, link); setText(""); setLink(""); };
+  const admin = isAdminName(currentName);
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <PrayIcon className="w-5 h-5 text-indigo-600" />
+        <p className="font-display text-xl text-indigo-950">Orações e links</p>
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <p className="font-display text-lg text-indigo-900 mb-3">Compartilhar uma oração</p>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Escreva um pedido de oração, uma reflexão ou um versículo…" rows={3}
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+        <div className="mt-2 relative">
+          <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link opcional (áudio, vídeo, texto…)"
+            className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <button onClick={submit} className="mt-3 rounded-xl bg-indigo-700 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-800 transition">Compartilhar</button>
+      </div>
+      <div className="space-y-3">
+        {prayers.length === 0 && <p className="text-sm text-slate-400 text-center py-8">Ainda não há orações compartilhadas. Seja o primeiro.</p>}
+        {prayers.map((p) => (
+          <PrayerCard key={p.id} prayer={p} onUpdate={onUpdate} onRemove={onRemove} currentName={currentName} profiles={profiles} canManage={admin || p.author === currentName} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PrayerCard({ prayer: p, onUpdate, onRemove, currentName, profiles, canManage }) {
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [eText, setEText] = useState(p.text);
+  const [eLink, setELink] = useState(p.link || "");
+  const saveEdit = () => { onUpdate(p.id, { text: eText.trim(), link: eLink.trim() }); setEditing(false); };
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 flex gap-3">
+      <Avatar name={p.author} profiles={profiles} size={36} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium text-indigo-800">{p.author}</p>
+          {canManage && !editing && (
+            confirmDel ? (
+              <span className="flex items-center gap-1 text-xs shrink-0">
+                <button onClick={() => onRemove(p.id)} className="text-red-500 font-medium">Sim, excluir</button>
+                <span className="text-slate-300">·</span>
+                <button onClick={() => setConfirmDel(false)} className="text-slate-400">cancelar</button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 text-xs shrink-0">
+                <button onClick={() => setEditing(true)} className="text-indigo-600 hover:underline">editar</button>
+                <button onClick={() => setConfirmDel(true)} className="text-slate-400 hover:text-red-500">remover</button>
+              </span>
+            )
+          )}
+        </div>
+        {editing ? (
+          <div className="mt-2 space-y-2">
+            <textarea value={eText} onChange={(e) => setEText(e.target.value)} rows={3}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+            <input value={eLink} onChange={(e) => setELink(e.target.value)} placeholder="Link opcional"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(false)} className="flex-1 rounded-lg border border-slate-200 text-slate-600 py-1.5 text-sm hover:bg-slate-50 transition">Cancelar</button>
+              <button onClick={saveEdit} className="flex-1 rounded-lg bg-indigo-700 text-white py-1.5 text-sm font-medium hover:bg-indigo-800 transition">Salvar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 text-slate-700 text-sm whitespace-pre-wrap">{p.text}</p>
+            {p.link && (
+              <a href={p.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-amber-600 hover:underline break-all">
+                <LinkIcon className="w-3.5 h-3.5 shrink-0" /> {p.link}
+              </a>
+            )}
+          </>
+        )}
+        <ReactionsAndComments collectionName="prayers" item={p} currentName={currentName} profiles={profiles} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Motivacional ---------------- */
+function MotivacionalView({ words, onAdd, onUpdate, onRemove, currentName, profiles }) {
+  const [word, setWord] = useState("");
+  const [message, setMessage] = useState("");
+  const submit = async () => { if (!word.trim()) return; await onAdd(word, message); setWord(""); setMessage(""); };
+  const admin = isAdminName(currentName);
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <SparkIcon className="w-5 h-5 text-amber-600" />
+        <p className="font-display text-xl text-indigo-950">Motivacional</p>
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <p className="font-display text-lg text-indigo-900 mb-3">O que está te inspirando?</p>
+        <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="Uma palavra ou frase curta (ex: gratidão, recomeço…)"
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Quer contar por quê? (opcional)" rows={2}
+          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+        <button onClick={submit} className="mt-3 rounded-xl bg-indigo-700 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-800 transition">Compartilhar</button>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {words.length === 0 && <p className="text-sm text-slate-400 text-center py-8 w-full">Nada compartilhado ainda.</p>}
+        {words.map((w) => (
+          <WordCard key={w.id} word={w} onUpdate={onUpdate} onRemove={onRemove} currentName={currentName} profiles={profiles} canManage={admin || w.author === currentName} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WordCard({ word: w, onUpdate, onRemove, currentName, profiles, canManage }) {
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [eWord, setEWord] = useState(w.word);
+  const [eMessage, setEMessage] = useState(w.message || "");
+  const saveEdit = () => { onUpdate(w.id, { word: eWord.trim(), message: eMessage.trim() }); setEditing(false); };
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 to-amber-50 border border-indigo-100 rounded-2xl px-4 py-3 max-w-xs flex gap-2.5">
+      <Avatar name={w.author} profiles={profiles} size={32} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          {!editing && <p className="font-display text-lg text-indigo-900">{w.word}</p>}
+          {canManage && !editing && (
+            confirmDel ? (
+              <span className="flex items-center gap-1 text-xs shrink-0">
+                <button onClick={() => onRemove(w.id)} className="text-red-500 font-medium">Sim</button>
+                <button onClick={() => setConfirmDel(false)} className="text-slate-400">não</button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 text-xs shrink-0">
+                <button onClick={() => setEditing(true)} className="text-indigo-600 hover:underline">editar</button>
+                <button onClick={() => setConfirmDel(true)} className="text-slate-400 hover:text-red-500">remover</button>
+              </span>
+            )
+          )}
+        </div>
+        {editing ? (
+          <div className="space-y-2 mt-1">
+            <input value={eWord} onChange={(e) => setEWord(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <textarea value={eMessage} onChange={(e) => setEMessage(e.target.value)} rows={2}
+              className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+            <div className="flex gap-2">
+              <button onClick={() => setEditing(false)} className="flex-1 rounded-lg border border-slate-200 text-slate-600 py-1 text-xs hover:bg-white transition">Cancelar</button>
+              <button onClick={saveEdit} className="flex-1 rounded-lg bg-indigo-700 text-white py-1 text-xs font-medium hover:bg-indigo-800 transition">Salvar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {w.message && <p className="text-sm text-slate-600 mt-1">{w.message}</p>}
+            <p className="text-xs text-indigo-500 mt-2">— {w.author}</p>
+          </>
+        )}
+        <ReactionsAndComments collectionName="words" item={w} currentName={currentName} profiles={profiles} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Reuniões ---------------- */
+function ReunioesView({ meetings, onAdd, onUpdate, onRemove, onToggleAttendance, currentName, profiles }) {
+  const [formOpen, setFormOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [location, setLocation] = useState("");
+  const [address, setAddress] = useState("");
+  const [openId, setOpenId] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const submit = async () => {
+    if (!date) return;
+    await onAdd(title, date, time, location, address);
+    setTitle(""); setDate(""); setTime(""); setLocation(""); setAddress("");
+    setFormOpen(false);
+  };
+
+  const pendentes = meetings.filter((m) => (m.status || "pendente") === "pendente").sort((a, b) => a.date.localeCompare(b.date));
+  const historico = meetings.filter((m) => m.status === "concluido").sort((a, b) => b.date.localeCompare(a.date));
+  const searchLower = search.trim().toLowerCase();
+  const historicoFiltrado = searchLower
+    ? historico.filter((m) =>
+        (m.title || "").toLowerCase().includes(searchLower) ||
+        (m.summary || "").toLowerCase().includes(searchLower) ||
+        (m.location || "").toLowerCase().includes(searchLower))
+    : historico;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <CalendarIcon className="w-5 h-5 text-indigo-600" />
+        <p className="font-display text-xl text-indigo-950">Reuniões</p>
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold text-slate-500 mb-2">Próximos</p>
+        <div className="space-y-3">
+          {pendentes.length === 0 && <p className="text-sm text-slate-400">Nenhum encontro pendente.</p>}
+          {pendentes.map((m) => (
+            <MeetingCard key={m.id} meeting={m} open={openId === m.id} onToggleOpen={() => setOpenId(openId === m.id ? null : m.id)}
+              onUpdate={onUpdate} onRemove={onRemove} onToggleAttendance={onToggleAttendance} currentName={currentName} profiles={profiles} />
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <button onClick={() => setFormOpen(!formOpen)} className="w-full flex items-center gap-3 px-5 py-3.5 text-left">
+          <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+            <CalendarIcon className="w-4.5 h-4.5 text-indigo-600" />
+          </div>
+          <p className="flex-1 text-sm font-medium text-indigo-900">Marcar novo encontro</p>
+          <span className="text-slate-300">{formOpen ? "▲" : "▼"}</span>
+        </button>
+        {formOpen && (
+          <div className="px-5 pb-5 border-t border-slate-100 pt-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título (ex: Encontro mensal)"
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 sm:col-span-2" />
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <div className="relative">
+                <ClockIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              </div>
+            </div>
+            <div className="relative mt-2">
+              <PinIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Local (ex: Salão da igreja, Casa do João e Maria…)"
+                className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <div className="relative mt-2">
+              <AddressIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço opcional (ex: Rua das Flores, 123)"
+                className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            </div>
+            <button onClick={submit} className="mt-3 rounded-xl bg-indigo-700 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-800 transition">Marcar encontro</button>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold text-slate-500 mb-2 mt-6">Histórico</p>
+        {historico.length > 0 && (
+          <div className="relative mb-3">
+            <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por palavra no título, resumo ou local…"
+              className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+        )}
+        <div className="space-y-3">
+          {historico.length === 0 && <p className="text-sm text-slate-400">Nenhum encontro concluído ainda.</p>}
+          {historico.length > 0 && historicoFiltrado.length === 0 && <p className="text-sm text-slate-400">Nada encontrado para "{search}".</p>}
+          {historicoFiltrado.map((m) => (
+            <MeetingCard key={m.id} meeting={m} open={openId === m.id} onToggleOpen={() => setOpenId(openId === m.id ? null : m.id)}
+              onUpdate={onUpdate} onRemove={onRemove} onToggleAttendance={onToggleAttendance} currentName={currentName} profiles={profiles} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MeetingCard({ meeting, open, onToggleOpen, onUpdate, onRemove, onToggleAttendance, currentName, profiles }) {
+  const [summaryDraft, setSummaryDraft] = useState(meeting.summary || "");
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [eTitle, setETitle] = useState(meeting.title);
+  const [eDate, setEDate] = useState(meeting.date);
+  const [eTime, setETime] = useState(meeting.time || "");
+  const [eLocation, setELocation] = useState(meeting.location || "");
+  const [eAddress, setEAddress] = useState(meeting.address || "");
+  const present = currentName && meeting.participants.includes(currentName);
+  const isConcluded = meeting.status === "concluido";
+  const saveSummary = () => { if (summaryDraft !== meeting.summary) onUpdate(meeting.id, { summary: summaryDraft }); };
+  const saveEdit = () => {
+    onUpdate(meeting.id, {
+      title: eTitle.trim() || "Encontro do círculo", date: eDate, time: eTime.trim(),
+      location: eLocation.trim(), address: eAddress.trim(),
+    });
+    setEditing(false);
+  };
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <button onClick={onToggleOpen} className="w-full text-left px-4 pt-3.5 pb-2 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-indigo-900">{meeting.title}</p>
+            {isConcluded && <span className="text-[10px] bg-emerald-50 text-emerald-600 rounded-full px-2 py-0.5 font-medium shrink-0">concluído</span>}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+              <CalendarIcon className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span>{formatDate(meeting.date)}</span>
+            </div>
+            {meeting.time && (
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                <ClockIcon className="w-4 h-4 text-indigo-500 shrink-0" />
+                <span>{meeting.time}</span>
+              </div>
+            )}
+          </div>
+          {meeting.location && (
+            <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+              <PinIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="truncate">{meeting.location}</span>
+            </div>
+          )}
+        </div>
+        <span className="flex items-center gap-1 text-xs text-slate-400 shrink-0">
+          ver detalhes <span className="text-slate-300">{open ? "▲" : "▼"}</span>
+        </span>
+      </button>
+
+      {!isConcluded && (
+        <div className="px-4 pb-3.5 flex items-center justify-between gap-3">
+          <button onClick={() => onToggleAttendance(meeting)}
+            className={`text-sm rounded-xl px-3 py-1.5 font-medium transition ${present ? "bg-indigo-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-indigo-50"}`}>
+            {present ? "✓ Presença confirmada" : "Confirmar presença"}
+          </button>
+          <span className="text-xs text-slate-400 shrink-0">{meeting.participants.length} presentes</span>
+        </div>
+      )}
+
+      {open && (
+        <div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-4">
+          {editing ? (
+            <div className="space-y-2 bg-slate-50 rounded-xl p-3">
+              <input value={eTitle} onChange={(e) => setETitle(e.target.value)} placeholder="Título"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="date" value={eDate} onChange={(e) => setEDate(e.target.value)}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                <input type="time" value={eTime} onChange={(e) => setETime(e.target.value)}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              </div>
+              <input value={eLocation} onChange={(e) => setELocation(e.target.value)} placeholder="Local"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <input value={eAddress} onChange={(e) => setEAddress(e.target.value)} placeholder="Endereço opcional"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setEditing(false)} className="flex-1 rounded-lg border border-slate-200 text-slate-600 py-1.5 text-sm hover:bg-white transition">Cancelar</button>
+                <button onClick={saveEdit} className="flex-1 rounded-lg bg-indigo-700 text-white py-1.5 text-sm font-medium hover:bg-indigo-800 transition">Salvar</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setEditing(true)} className="text-xs text-indigo-600 font-medium hover:underline">
+              editar encontro
+            </button>
+          )}
+
+          {meeting.address && (
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meeting.address)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-amber-600 hover:underline">
+              <AddressIcon className="w-4 h-4" /> {meeting.address} · abrir no mapa
+            </a>
+          )}
+
+          {meeting.participants.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {meeting.participants.map((p) => (
+                <div key={p} className="flex items-center gap-1.5 bg-slate-50 rounded-full pl-1 pr-2.5 py-1">
+                  <Avatar name={p} profiles={profiles} size={20} />
+                  <span className="text-xs text-slate-600">{p}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-semibold text-slate-500 mb-1">Resumo do encontro</p>
+            <textarea value={summaryDraft} onChange={(e) => setSummaryDraft(e.target.value)} onBlur={saveSummary}
+              placeholder="O que foi falado, combinado, orado…" rows={3}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 pt-1">
+            {!isConcluded ? (
+              <button onClick={() => onUpdate(meeting.id, { status: "concluido" })}
+                className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium hover:underline">
+                <CheckIcon className="w-3.5 h-3.5" /> marcar como concluído
+              </button>
+            ) : (
+              <button onClick={() => onUpdate(meeting.id, { status: "pendente" })}
+                className="text-xs text-indigo-600 font-medium hover:underline">
+                reabrir encontro
+              </button>
+            )}
+            <button onClick={() => exportAtaPdf(meeting)} className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:underline">
+              <DownloadIcon className="w-3.5 h-3.5" /> baixar ata (PDF)
+            </button>
+            {confirmDelete ? (
+              <span className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500">Tem certeza?</span>
+                <button onClick={() => onRemove(meeting.id)} className="text-red-500 font-medium">Sim, excluir</button>
+                <button onClick={() => setConfirmDelete(false)} className="text-slate-400">cancelar</button>
+              </span>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="text-xs text-slate-400 hover:text-red-500">excluir encontro</button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
